@@ -5,10 +5,30 @@
 
 #define TEST_FILE "test_00.bin"
 
-// rlwinm does a circular rotate left, then logical AND against some mask
-uint32_t rlwinm(uint32_t val, uint32_t shl, uint32_t mask) {
-    return ( (val << shl) | ((val >> (32 - shl)) & ~(-1 << shl))) & mask;
+/* These rlwinm helper functions are based off the rlwinm implementation here:
+ *
+ *	https://gist.github.com/rygorous/1440600
+ *
+ */
+uint32_t rlwinm_get_mask(uint32_t mb, uint32_t me)
+{
+	uint32_t maskmb = 0xffffffff >> mb;
+	uint32_t maskme = 0xfffffff << (31 - me);
+	if (mb <= me)
+		return maskmb & maskme;
+	else
+		return maskmb | maskme;
 }
+
+static inline uint32_t rlwinm_rotl(uint32_t x, uint32_t sh)
+{
+   return (x << sh) | (x >> ((32 - sh) & 31));
+}
+static inline uint32_t rlwinm(uint32_t rs, uint32_t sh, uint32_t mb, uint32_t me)
+{
+   return rlwinm_rotl(rs, sh) & rlwinm_get_mask(mb, me);
+}
+
 
 uint32_t shl(uint32_t val, uint32_t shl){
     return (val << shl) | ((val >> (32 - shl)) & ~(-1 << shl));
@@ -59,16 +79,18 @@ uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 		//printf("\ttotal_iterations: %x\n", *total_iterations);
 
 		/* This started half-working when I negate this mask (???) */
-		base_offset = rlwinm(*total_iterations, 29, ~0xfffffff8);
+		base_offset = rlwinm(*total_iterations, 29,  3, 31);
+
 
 		input_ptr = compressed_base + base_offset;
-		//printf("\tbase: %p, offset: %x\n", compressed_base, base_offset);
+		//printf("\t\tbase: %p, offset: %x\n", compressed_base, base_offset);
 		input_val = *(uint8_t*)input_ptr;
-		//printf("\tinput_val: %x\n", input_val);
+		//printf("\t\tinput_val: %x\n", input_val);
 
-		mask = rlwinm(*total_iterations, 0, 0x00000007);
+		mask = rlwinm(*total_iterations, 0, 29, 31);
+
 		mask = 1 << (mask & 0x1F); // Up to 16 bits of left-shift
-		//printf("\tmask: %x\n", mask);
+		//printf("\t\tmask: %x\n", mask);
 
 		if (mask & input_val) {
 			//r0 = 1 << ((num_iterations - 1) & 0x1F);
