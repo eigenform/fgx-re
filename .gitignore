@@ -1,0 +1,5 @@
+*
+!.gitignore
+!fgx_deobfus_test.c
+!Makefile
+!test_00.bin
