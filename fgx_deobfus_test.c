@@ -12,6 +12,7 @@
  */
 uint32_t rlwinm_get_mask(uint32_t mb, uint32_t me)
 {
+	// When constructing a mask, we count from the right
 	uint32_t maskmb = 0xffffffff >> mb;
 	uint32_t maskme = 0xfffffff << (31 - me);
 	if (mb <= me)
@@ -19,20 +20,76 @@ uint32_t rlwinm_get_mask(uint32_t mb, uint32_t me)
 	else
 		return maskmb | maskme;
 }
-
-static inline uint32_t rlwinm_rotl(uint32_t x, uint32_t sh)
+uint32_t rlwinm_rotl(uint32_t x, uint32_t sh)
 {
    return (x << sh) | (x >> ((32 - sh) & 31));
 }
-static inline uint32_t rlwinm(uint32_t rs, uint32_t sh, uint32_t mb, uint32_t me)
+uint32_t rlwinm(uint32_t rs, uint32_t sh, uint32_t mb, uint32_t me)
 {
    return rlwinm_rotl(rs, sh) & rlwinm_get_mask(mb, me);
 }
 
+ /* See questions/7775991/how-to-get-hexdump-of-a-structure-data */
+void hexdump(char *desc, void *addr, int len)
+{
+	unsigned char *pc = (unsigned char*)addr;
+	unsigned char buff[17];
+	int i;
 
-uint32_t shl(uint32_t val, uint32_t shl){
-    return (val << shl) | ((val >> (32 - shl)) & ~(-1 << shl));
+	if (desc != NULL) printf ("%s:\n", desc);
+	if (len == 0)
+	{
+		printf("  ZERO LENGTH\n");
+		return;
+	}
+	if (len < 0)
+	{
+		printf("  NEGATIVE LENGTH: %i\n",len);
+		return;
+	}
+
+	for (i = 0; i < len; i++)
+	{
+		if ((i % 16) == 0)
+		{
+			if (i != 0)
+				printf("  %s\n", buff);
+			printf("  %04x ", i);
+		}
+		
+		printf(" %02x", pc[i]);
+		if ((pc[i] < 0x20) || (pc[i] > 0x7e))
+			buff[i % 16] = '.';
+		else
+			buff[i % 16] = pc[i];
+		buff[(i % 16) + 1] = '\0';
+	}
+
+	while ((i % 16) != 0)
+	{
+		printf("   ");
+		i++;
+	}
+	
+	printf("  %s\n", buff);
 }
+
+
+/* Structure of un-obfuscated replay data. From yoshifan's research, which
+ * you can find here:
+ *
+ *	https://github.com/yoshifan/fzerogx-docs
+ *
+ */
+struct replay_entry {
+	uint8_t mask;
+	int8_t steer_x;
+	int8_t steer_y;
+	int8_t strafe;
+	uint8_t accel;
+	uint8_t brake;
+	uint8_t frames;
+} __attribute__((__packed__));
 
 
 /* This seems like the function actually responsible for de-obfuscating bytes.
@@ -76,28 +133,19 @@ uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 		goto loc_802af008; // this will probably never be the case
 
 	while (ctr != 0) {
-		//printf("\ttotal_iterations: %x\n", *total_iterations);
 
-		/* This started half-working when I negate this mask (???) */
 		base_offset = rlwinm(*total_iterations, 29,  3, 31);
 
-
 		input_ptr = compressed_base + base_offset;
-		//printf("\t\tbase: %p, offset: %x\n", compressed_base, base_offset);
 		input_val = *(uint8_t*)input_ptr;
-		//printf("\t\tinput_val: %x\n", input_val);
 
 		mask = rlwinm(*total_iterations, 0, 29, 31);
 
 		mask = 1 << (mask & 0x1F); // Up to 16 bits of left-shift
-		//printf("\t\tmask: %x\n", mask);
 
-		if (mask & input_val) {
-			//r0 = 1 << ((num_iterations - 1) & 0x1F);
-			//result = result | r0;
+		if (mask & input_val)
 			result = result | (1 << ((num_iterations -1) & 0x1F));
-			//printf("\tresult: %x\n", result);
-		}
+
 		num_iterations--;
 		*total_iterations = *total_iterations + 1;
 		ctr--;
@@ -119,7 +167,15 @@ loc_802af008:
  * $ dd if=8P-GFZE-fzr000035804D31D70EE97E77.dat.gci of=test.bin bs=1 \
  * 	skip=$((0x20a0))
  *
- * I *think* these arguments and expected results are correct.
+ * Needless to say: this is a messy representation of the process, and it's
+ * probably wrong in the sense that it's probably not a general-enough
+ * representation of this whole process. Some of the loop counters here may
+ * be particular to/computed specifically for handling the input from
+ * 8P-GFZE-fzr000035804D31D70EE97E77 in particular.
+ *
+ * Note that, in the actual code, we always `li r5, <some number` for passing
+ * the `num_iterations` argument to func_802aefb8 (so at least these
+ * function calls are correct in that sense).
  */
 int main() {
 	uint32_t result;
@@ -132,36 +188,279 @@ int main() {
 		exit(-1);
 	fread(gci_data, 0x4000,1,fp);
 
+	/* When PC=0x80596450 */
+loc_80596450:
 	result = func_802aefb8(gci_data, total_obfuscated, 8);
-	printf("expected: 0x00000091, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 7);
-	printf("expected: 0x00000005, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 6);
-	printf("expected: 0x00000024, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 32);
-	printf("expected: 0x496cfc59, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 32);
-	printf("expected: 0xcae80767, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 5);
-	printf("expected: 0x00000001, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 3);
-	printf("expected: 0x00000000, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 2);
-	printf("expected: 0x00000002, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 1);
-	printf("expected: 0x00000000, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
 	result = func_802aefb8(gci_data, total_obfuscated, 7);
-	printf("expected: 0x00000003, result: 0x%08x\n", result);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
 
+	/* We jump somewhere else here (function call i think)...
+	 * .
+	 * .
+	 * .
+	 */
+
+	result = func_802aefb8(gci_data, total_obfuscated, 1);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 6);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	/* some loop here where initially r20=5, and we `cmplwi r20, 3`,
+	 * otherwise blt- 0x80596574 */
+
+	int some_counter = 5;
+	if (some_counter == 3)
+		goto loc_80596574;
+
+loc_80596560:
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	if (some_counter == 2)
+		goto loc_80596590;
+
+	result = func_802aefb8(gci_data, total_obfuscated, 7);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	// The byte at 0x8039b560 is compared against 0x00
+	// (initially it's 0x01); dunno what this is
+	uint8_t unk_byte1 = 0x01;
+	if (unk_byte1 == 0x00)
+		goto loc_805966b4;
+	
+	result = func_802aefb8(gci_data, total_obfuscated, 2);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	if (some_counter > 2)
+		goto loc_805965cc;
+
+
+loc_80596574:
+loc_80596590:
+loc_805965cc:
+	// Some stuff happens here that I don't understand
+	//  . . .
+	result = func_802aefb8(gci_data, total_obfuscated, 1);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	// We always pass over this branch for this specific file.
+	// This may not always be the case.
+	// rlwinm. r0, result, 0, 24, 31
+	// beq- 0x8059665c
+
+loc_8059665c:
+	// do some things
+	// bl 80008bec
+loc_805966b4:
+
+loc_80596700:
+	result = func_802aefb8(gci_data, total_obfuscated, 1);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+
+loc_80596730:
+	result = func_802aefb8(gci_data, total_obfuscated, 2);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	if (some_counter < 5)
+		goto loc_8059677c;
+
+	result = func_802aefb8(gci_data, total_obfuscated, 20);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+
+loc_8059677c:
+
+loc_80596810:
+
+loc_80596844:
+	result = func_802aefb8(gci_data, total_obfuscated, 8);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+loc_805968cc:
+loc_805968d8:
+	result = func_802aefb8(gci_data, total_obfuscated, 14);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 14);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 4);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 5);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+
+loc_80596a18:
+	/* This block is a loop over some value in r20, dunno.
+	 * For this GCI, it just runs once  */
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+
+loc_80596ba0:
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+	result = func_802aefb8(gci_data, total_obfuscated, 32);
+	printf(" result: 0x%08x\n", result);
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+
+	int some_counter_2;
+	some_counter_2++;
+	if (some_counter_2 < 4)
+		goto loc_805968cc;
+
+loc_80596d18:
+	result = func_802aefb8(gci_data, total_obfuscated, 14);
+	printf(" result: 0x%08x\n", result);
+	// the "count" here of total_obfuscated should be 0x78e
+	printf("\ttotal_obfuscated: 0x%08x\n", *total_obfuscated);
+
+//loc_80596e1c:
+	uint32_t current_array_index;
+	current_array_index = 0x00000000;
+	uint32_t replay_array_length; // should be 0x000007c7 for this GCI
+	uint32_t replay_bytes_counter;
+	replay_array_length = result;
+
+	struct replay_entry replay_array[replay_array_length+0x10];
+	memset(&replay_array, 0x00, sizeof(replay_array));
+
+	while (current_array_index <= replay_array_length){
+
+		result = func_802aefb8(gci_data, total_obfuscated, 8);
+		replay_array[current_array_index].mask = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 8);
+		replay_array[current_array_index].strafe = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 7);
+		replay_array[current_array_index].accel = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 7);
+		replay_array[current_array_index].brake = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 8);
+		replay_array[current_array_index].frames = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 8);
+		replay_array[current_array_index].steer_x = result;
+
+		result = func_802aefb8(gci_data, total_obfuscated, 8);
+		replay_array[current_array_index].steer_y = result;
+
+		current_array_index = current_array_index + 1;
+		replay_bytes_counter = replay_bytes_counter + 7;
+	}
+	hexdump("computed array", &replay_array, sizeof(replay_array));
 
 	free(gci_data);
 	free(total_obfuscated);
