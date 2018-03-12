@@ -5,30 +5,6 @@
 
 #define TEST_FILE "test_00.bin"
 
-/* These rlwinm helper functions are based off the rlwinm implementation here:
- *
- *	https://gist.github.com/rygorous/1440600
- *
- */
-uint32_t rlwinm_get_mask(uint32_t mb, uint32_t me)
-{
-	// When constructing a mask, we count from the right
-	uint32_t maskmb = 0xffffffff >> mb;
-	uint32_t maskme = 0xfffffff << (31 - me);
-	if (mb <= me)
-		return maskmb & maskme;
-	else
-		return maskmb | maskme;
-}
-uint32_t rlwinm_rotl(uint32_t x, uint32_t sh)
-{
-   return (x << sh) | (x >> ((32 - sh) & 31));
-}
-uint32_t rlwinm(uint32_t rs, uint32_t sh, uint32_t mb, uint32_t me)
-{
-   return rlwinm_rotl(rs, sh) & rlwinm_get_mask(mb, me);
-}
-
  /* See questions/7775991/how-to-get-hexdump-of-a-structure-data */
 void hexdump(char *desc, void *addr, int len)
 {
@@ -133,15 +109,13 @@ uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 		goto loc_802af008; // this will probably never be the case
 
 	while (ctr != 0) {
-
-		base_offset = rlwinm(*total_iterations, 29,  3, 31);
+		base_offset = (*total_iterations >> 3) & 0x1fffffff;
 
 		input_ptr = compressed_base + base_offset;
 		input_val = *(uint8_t*)input_ptr;
 
-		mask = rlwinm(*total_iterations, 0, 29, 31);
-
-		mask = 1 << (mask & 0x1F); // Up to 16 bits of left-shift
+		mask = *total_iterations & 0x00000007;
+		mask = 1 << (mask & 0x1F); // what is the 0x1F doing here even
 
 		if (mask & input_val)
 			result = result | (1 << ((num_iterations -1) & 0x1F));
