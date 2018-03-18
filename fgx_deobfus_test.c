@@ -50,6 +50,8 @@ uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 		num_iterations--;
 		*total_iterations = *total_iterations + 1;
 		ctr--;
+		//printf("base_off=0x%08x, mask=0x%08x, input_val=0x%02x, total_iter=0x%08x\n",
+		//	base_offset, mask, input_val, *total_iterations);
 	}
 
 	printf("0x%08x\n", result);
@@ -116,11 +118,11 @@ int main() {
 	uint32_t replay_bytes_counter;
 
 
-	unsigned char *gci_data = malloc(0x4000);
+	unsigned char *gci_data = malloc(0x20000);
 	FILE *fp = fopen(TEST_FILE, "rb");
 	if (fp == NULL)
 		exit(-1);
-	fread(gci_data, 0x4000,1,fp);
+	fread(gci_data, 0x20000,1,fp);
 	fclose(fp);
 
 	FILE *out;
@@ -176,7 +178,7 @@ loc_80596450:
 
 			res = func_802aefb8(gci_data, total_obfuscated, 1);
 
-			if ( (res & 0xFF000000) != 0) { // rlwinm. r0, r3, 0 24, 31 (???)
+			if ( (res & 0x000000FF) != 0) { // rlwinm. r0, r3, 0 24, 31 (???)
 				r18_counter11 = 0; // li r18, 0
 				while (r18_counter11 < 33216) {
 					res = func_802aefb8(gci_data, total_obfuscated, 8);
