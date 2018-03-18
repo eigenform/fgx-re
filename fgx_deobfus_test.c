@@ -3,8 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#define TEST_FILE "test_00.bin"
-#define OUTPUT_FILE "test_00_replay_region.bin"
+#define TEST_FILE		"test.gci"
+#define OUTPUT_FILE		"test_00_replay_region.bin"
+#define COMPRESSED_DATA_OFFSET	0x20A0
 
 /* Structure of un-obfuscated replay data. See yoshifan's research:
  * https://github.com/yoshifan/fzerogx-docs */
@@ -23,7 +24,8 @@ struct replay_entry {
  * I'm pretty sure the behavior is correct. */
 uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 		uint32_t num_iterations) {
-	printf("func_802aefb8(..., *total_iter=0x%08x, num_iter=0x%02x) = ", *total_iterations, num_iterations);
+	printf("func_802aefb8(..., *total_iter=0x%08x, num_iter=0x%02x) = ",
+			*total_iterations, num_iterations);
 
 	uint32_t result = 0;
 	int ctr = num_iterations;
@@ -59,260 +61,248 @@ uint32_t func_802aefb8(void *compressed_base, uint32_t *total_iterations,
 }
 
 
-/* `main()` here is a test representing the start of the function at
- * 0x80596414, which makes these passes over the beginning of obfuscated GCI
- * data. These are just to test the output of func_802aefb8 against expected
- * values.
- *
- * test.bin is yoshifan's `8P-GFZE-fzr000035804D31D70EE97E77.dat.gci` file
- * with the head chopped off (the obfuscated data starts at 0x20a0); do:
- *
- * $ dd if=8P-GFZE-fzr000035804D31D70EE97E77.dat.gci of=test.bin bs=1 \
- * 	skip=$((0x20a0))
- *
- * Needless to say: this is a messy representation of the process, and it's
- * probably wrong in the sense that it's probably not a general-enough
- * representation of this whole process [yet!]. Some of the loop counters here
- * may be particular to/computed specifically for handling the input from
- * 8P-GFZE-fzr000035804D31D70EE97E77 in particular -- mostly because I haven't
- * figured out where they're set/what they're dependent on.
- *
- * Note that, in the actual code, we always `li r5, <some number` for passing
- * the `num_iterations` argument to func_802aefb8 (so at least these
- * function calls are correct in that sense).
- */
-int main() {
+void func_80596414(unsigned char *gci_data, uint32_t *num_bits){
 	uint32_t res;
-	uint32_t *total_obfuscated = malloc(sizeof(uint32_t));
-	*total_obfuscated = 0x00;
 
-	uint32_t r31_counter1;
-	uint32_t r24_counter1;
+	uint8_t r28_unk0, r28_unk1, r28_unk2, r28_unk3, r28_unk4;
+	uint32_t r24_loop1, r31_loop1, r18_loop2, r25_loop3;
+	uint32_t r23_unk1;
+	uint32_t r20_unk1 = 5; // I actually don't know why this is 5
 
-	uint32_t r25_counter4;
-	uint32_t r24_counter4;
-
-
-	uint8_t r28_unk0;
-	uint8_t r28_unk1;
-	uint8_t r28_unk2;
-	uint8_t r28_unk3;
-	uint8_t r28_unk4;
-
-	uint16_t r4_off_0x0110;
-
-	uint32_t r20_counter2 = 5; // I actually don't know why this is 5
-	uint32_t r20_counter7;
-	uint32_t r23_counter3;
-	uint32_t r23_counter8;
-
-	uint32_t r21_counter9;
-	uint32_t r19_counter9;
-
-	uint32_t r27_counter10;
-
-	uint32_t r18_counter11;
-
-	uint32_t current_array_index;
-	uint32_t replay_array_length;
-	uint32_t replay_bytes_counter;
-
-
-	unsigned char *gci_data = malloc(0x20000);
-	FILE *fp = fopen(TEST_FILE, "rb");
-	if (fp == NULL)
-		exit(-1);
-	fread(gci_data, 0x20000,1,fp);
-	fclose(fp);
-
-	FILE *out;
-
-/* -------- Function 0x80596414 00_Do_Decompression0? ---------------------- */
-loc_80596450:
-	res = func_802aefb8(gci_data, total_obfuscated, 8);
-	res = func_802aefb8(gci_data, total_obfuscated, 7);
-	res = func_802aefb8(gci_data, total_obfuscated, 6);
-	res = func_802aefb8(gci_data, total_obfuscated, 32);
-	// SetTRKConnected();
-	res = func_802aefb8(gci_data, total_obfuscated, 32);
+	res = func_802aefb8(gci_data, num_bits, 8);
+	res = func_802aefb8(gci_data, num_bits, 7);
+	res = func_802aefb8(gci_data, num_bits, 6);
+	res = func_802aefb8(gci_data, num_bits, 32);
+	res = func_802aefb8(gci_data, num_bits, 32);
 	// stw r3, 0(r6=801a63c0) (???)
-	res = func_802aefb8(gci_data, total_obfuscated, 5);
-	r31_counter1 = res; // mr r31, r3
-	res = func_802aefb8(gci_data, total_obfuscated, 3);
+	res = func_802aefb8(gci_data, num_bits, 5);
+	r31_loop1 = res; // mr r31, r3
+	res = func_802aefb8(gci_data, num_bits, 3);
 	// sth r3, 0x8(r5=803ffd80) (???)
-	res = func_802aefb8(gci_data, total_obfuscated, 2);
-	res = func_802aefb8(gci_data, total_obfuscated, 1);
+	res = func_802aefb8(gci_data, num_bits, 2);
+	res = func_802aefb8(gci_data, num_bits, 1);
 	// rlwinm r21, r3, 0, 24, 31 (???)
-	res = func_802aefb8(gci_data, total_obfuscated, 7);
+	res = func_802aefb8(gci_data, num_bits, 7);
 	// rlwinm r22, r3, 0, 24, 31 (???)
 
-	r23_counter3 = 0;
-	r24_counter1 = 0;  // li r24, 0
-	r27_counter10 = 0; // li r27, 0
+	r23_unk1 = 0;
+	r24_loop1 = 0;  // li r24, 0
 
-	while (r24_counter1 < r31_counter1) { //cmplw r24, r31; blt 0x80596530
-		res = func_802aefb8(gci_data, total_obfuscated, 1);
+	while (r24_loop1 < r31_loop1) { //cmplw r24, r31; blt 0x80596530
+
+		res = func_802aefb8(gci_data, num_bits, 1);
 		r28_unk0 = (uint8_t)res & 0xFF; //stb r3, 0x0000(r28=8039b560)
-		res = func_802aefb8(gci_data, total_obfuscated, 6);
 
+		res = func_802aefb8(gci_data, num_bits, 6);
 		r28_unk1 = (uint8_t)res & 0xFF; //stb r3, 0x0001(r28=8039b560)
 
-		if (r20_counter2 > 3) { //cmplwi r20, 3; blt- 0x80596574
-			res = func_802aefb8(gci_data, total_obfuscated, 5);
+		if (r20_unk1 > 3) { //cmplwi r20, 3; blt- 0x80596574
+			res = func_802aefb8(gci_data, num_bits, 5);
 			r28_unk4 = (uint8_t)res & 0xFF; //stb r3, 0x0004(r28=8039b560)
 		}
 
-		if (r20_counter2 > 2) { //cmplwi r20, 2; blt- 0x80596590
-			res = func_802aefb8(gci_data, total_obfuscated, 7);
+		if (r20_unk1 > 2) { //cmplwi r20, 2; blt- 0x80596590
+			res = func_802aefb8(gci_data, num_bits, 7);
 			r28_unk3 = (uint8_t)res & 0xFF; // stb r3, 0x0003(r28=8039b560)
 		}
 
 		if (r28_unk0 != 0) { // lbz r0, 0(r28=8039b560); cmplwi r0, 0; beq- 0x805966b4
-			res = func_802aefb8(gci_data, total_obfuscated, 2);
+			res = func_802aefb8(gci_data, num_bits, 2);
 			r28_unk2 = (uint8_t)res & 0xFF; // stb r3, 0x0002(r28=8039b560)
 
-			if (r20_counter2 < 2) { //cmplwi r20, 2; bge- 0x805965cc
-				res = func_802aefb8(gci_data, total_obfuscated, 7);
+			if (r20_unk1 < 2) { //cmplwi r20, 2; bge- 0x805965cc
+				res = func_802aefb8(gci_data, num_bits, 7);
 				r28_unk3 = (uint8_t)res & 0xFF; // stb r3, 0x0003(r28=8039b560)
 			}
 
-			res = func_802aefb8(gci_data, total_obfuscated, 1);
+			res = func_802aefb8(gci_data, num_bits, 1);
 
 			if ( (res & 0x000000FF) != 0) { // rlwinm. r0, r3, 0 24, 31 (???)
-				r18_counter11 = 0; // li r18, 0
-				while (r18_counter11 < 33216) {
-					res = func_802aefb8(gci_data, total_obfuscated, 8);
+				r18_loop2 = 0; // li r18, 0
+				while (r18_loop2 < 33216) {
+					res = func_802aefb8(gci_data, num_bits, 8);
 					//rlwinm r19, r3, 0, 24, 31
-					//func_801f154c();
-					r18_counter11++;
+					r18_loop2++;
 				}
 			}
 
-			// A bunch of things that I don't understand happen here
-			// ...
-
-			r23_counter3++;
-			r24_counter1++;
+			r23_unk1++;
+			r24_loop1++;
 		}
 		else if (r28_unk0 == 0) {
 			r28_unk2 = 0;
 			r28_unk3 = 0;
-			r24_counter1++; // addi r24, r24, 1
+			r24_loop1++; // addi r24, r24, 1
 		}
 	}
 
-	if (r20_counter2 > 4) { //cmplwi r20, 4; blt- 0x8059671c
+	if (r20_unk1 > 4) { //cmplwi r20, 4; blt- 0x8059671c
 		// rlwinm r24, r23, 0, 24, 31 (???)
-		r25_counter4 = 0; // li r25, 0
-		while (r25_counter4 < r24_counter1) { // cmpw r25, r24; blt+ 0x805966f8
-			res = func_802aefb8(gci_data, total_obfuscated, 1);
+		r25_loop3 = 0; // li r25, 0
+		while (r25_loop3 < r24_loop1) { // cmpw r25, r24; blt+ 0x805966f8
+			res = func_802aefb8(gci_data, num_bits, 1);
 			// stb r3, 0x003c(r19=803f39b8)
 			// addi r19, r19, 1
-			r25_counter4++; // addi r25, r25, 1
+			r25_loop3++; // addi r25, r25, 1
 		}
 	}
 
-
 	// rlwinm r24, r23, 0, 24, 31 (???)
-	r25_counter4 = 0; // li r25, 0
-	while (r25_counter4 < r24_counter1) { // cmpw r25, r24; blt+ 0x80596730
-		res = func_802aefb8(gci_data, total_obfuscated, 2);
+	r25_loop3 = 0; // li r25, 0
+	while (r25_loop3 < r24_loop1) { // cmpw r25, r24; blt+ 0x80596730
+		res = func_802aefb8(gci_data, num_bits, 2);
 		//addi r0, r3, 1
-		r25_counter4++; // addi r25, r25, 1
+		r25_loop3++; // addi r25, r25, 1
 		//stb r0, 0x0038 (r19=803f39b8)
 		//addi r19, r19, 1
 	}
 
-	if (r20_counter2 >= 5) { //clmpwi r20, 5; blt- 0x8059677c
-		res = func_802aefb8(gci_data, total_obfuscated, 20);
+	if (r20_unk1 >= 5) { //clmpwi r20, 5; blt- 0x8059677c
+		res = func_802aefb8(gci_data, num_bits, 20);
 	}
 
-	//...
+	// ...
 	// blr
-
-/* ------------------------------------------------------------------------- */
-
-
-/* A lot of different other things happen here (we go up in the call stack)
- * that may or may not be relevant. Eventually we enter func_80596810 below.
- * This function seems like it's responsible for actually building the replay
- * array that encodes some inputs. */
+}
 
 
-/* -------- Function 0x80596810 00_Do_Decompression1? ---------------------- */
 
-	res = func_802aefb8(gci_data, total_obfuscated, 8);
 
-	r20_counter7 = 0;// li r20, 0
-	r4_off_0x0110 = (uint16_t)res; //sth r3, -0x0110(r4=81291380)
-	r23_counter8 = 0;  //li r23, 0
+/* This function allocates an array of `struct replay_entry` and returns
+ * a pointer to the filled array after all bytes have been decoded.
+ * Takes a pointer to some `array_length` in order to pass the number of
+ * entries back to `main()`. */
+struct replay_entry *func_80596810(unsigned char *gci_data,
+		uint32_t *num_bits, uint32_t *replay_array_length){
 
-	while (r20_counter7 < r4_off_0x0110) { //cmpw r20, r0; blt+ 0x805968cc
-		res = func_802aefb8(gci_data, total_obfuscated, 14);
-		res = func_802aefb8(gci_data, total_obfuscated, 14);
-		res = func_802aefb8(gci_data, total_obfuscated, 4);
-		res = func_802aefb8(gci_data, total_obfuscated, 5);
-		res = func_802aefb8(gci_data, total_obfuscated, 5);
-		res = func_802aefb8(gci_data, total_obfuscated, 5);
-		res = func_802aefb8(gci_data, total_obfuscated, 5);
-		res = func_802aefb8(gci_data, total_obfuscated, 5);
+	uint32_t res, idx, arrlen;
+	struct replay_entry *arr;
 
-		r19_counter9 = 0; // li r19, 0
+	uint32_t r20_loop1, r21_loop2, r19_loop3;
+	uint16_t r4_unk1;
+
+	res = func_802aefb8(gci_data, num_bits, 8);
+
+	r20_loop1 = 0; // li r20, 0
+	r4_unk1 = (uint16_t)res; //sth r3, -0x0110(r4=81291380)
+
+	while (r20_loop1 < r4_unk1) { //cmpw r20, r0; blt+ 0x805968cc
+		res = func_802aefb8(gci_data, num_bits, 14);
+		res = func_802aefb8(gci_data, num_bits, 14);
+		res = func_802aefb8(gci_data, num_bits, 4);
+		res = func_802aefb8(gci_data, num_bits, 5);
+		res = func_802aefb8(gci_data, num_bits, 5);
+		res = func_802aefb8(gci_data, num_bits, 5);
+		res = func_802aefb8(gci_data, num_bits, 5);
+		res = func_802aefb8(gci_data, num_bits, 5);
+
+		r19_loop3 = 0; // li r19, 0
 		// li r24, 0 (???)
 		// ...
 
-		r21_counter9 = 1; // lbz r0, 0 (r21) (don't know where this is from)
-		while (r19_counter9 < r21_counter9) { //cmpw r19, r0; blt+ 0x80596a18
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			res = func_802aefb8(gci_data, total_obfuscated, 32);
-			r19_counter9++;
+		r21_loop2 = 1; // lbz r0, 0 (r21) (don't know where this is from)
+		while (r19_loop3 < r21_loop2) { //cmpw r19, r0; blt+ 0x80596a18
+			res = func_802aefb8(gci_data, num_bits, 32);
+			res = func_802aefb8(gci_data, num_bits, 32);
+			res = func_802aefb8(gci_data, num_bits, 32);
+			res = func_802aefb8(gci_data, num_bits, 32);
+			res = func_802aefb8(gci_data, num_bits, 32);
+			res = func_802aefb8(gci_data, num_bits, 32);
+			r19_loop3++;
 		}
 
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		res = func_802aefb8(gci_data, total_obfuscated, 32);
-		r20_counter7++;
+		res = func_802aefb8(gci_data, num_bits, 32);
+		res = func_802aefb8(gci_data, num_bits, 32);
+		res = func_802aefb8(gci_data, num_bits, 32);
+		res = func_802aefb8(gci_data, num_bits, 32);
+		res = func_802aefb8(gci_data, num_bits, 32);
+		res = func_802aefb8(gci_data, num_bits, 32);
+		r20_loop1++;
 	}
 
-	// This call returns the number of entries in the decompressed replay array
-	replay_array_length = func_802aefb8(gci_data, total_obfuscated, 14);
+	// Get the number of entries in the decompressed replay array
+	arrlen = func_802aefb8(gci_data, num_bits, 14);
 
-	current_array_index = 0x00000000;
-	struct replay_entry replay_array[replay_array_length+0x10];
-	memset(&replay_array, 0x00, sizeof(replay_array));
+	/* Write the array length back to the caller, then allocate an
+	 * array to return after we're done writing decompressed data */
+
+	*replay_array_length = arrlen; // write array length back to caller
+	arr = malloc((sizeof(struct replay_entry) * (arrlen+0x10)));
+	memset(arr, 0x00, (sizeof(struct replay_entry) * (arrlen+0x10)));
+	struct replay_entry *cur = arr;
+
 
 	printf("-------------------- replay array --------------------\n");
-	while (current_array_index <= replay_array_length){
-		replay_array[current_array_index].mask    = func_802aefb8(gci_data, total_obfuscated, 8);
-		replay_array[current_array_index].strafe  = func_802aefb8(gci_data, total_obfuscated, 8);
-		replay_array[current_array_index].accel   = func_802aefb8(gci_data, total_obfuscated, 7);
-		replay_array[current_array_index].brake   = func_802aefb8(gci_data, total_obfuscated, 7);
-		replay_array[current_array_index].frames  = func_802aefb8(gci_data, total_obfuscated, 8);
-		replay_array[current_array_index].steer_x = func_802aefb8(gci_data, total_obfuscated, 8);
-		replay_array[current_array_index].steer_y = func_802aefb8(gci_data, total_obfuscated, 8);
-
-		current_array_index = current_array_index + 1;
-		replay_bytes_counter = replay_bytes_counter + 7;
+	idx = 0;
+	while (idx <= arrlen){
+		cur->mask    = func_802aefb8(gci_data, num_bits, 8);
+		cur->strafe  = func_802aefb8(gci_data, num_bits, 8);
+		cur->accel   = func_802aefb8(gci_data, num_bits, 7);
+		cur->brake   = func_802aefb8(gci_data, num_bits, 7);
+		cur->frames  = func_802aefb8(gci_data, num_bits, 8);
+		cur->steer_x = func_802aefb8(gci_data, num_bits, 8);
+		cur->steer_y = func_802aefb8(gci_data, num_bits, 8);
+		cur++;
+		idx++;
 	}
-	// func_802af210();
-	// ...
-	// Seems like decompression ends here, then the replay starts.
 
-/* ------------------------------------------------------------------------- */
+	// ...
+	// blr
+	return arr;
+}
+
+
+int main() {
+	FILE *out, *in;
+	int pos;
+
+	uint32_t bit_counter = 0x00;
+	uint32_t array_size;
+	unsigned char *gci_base;
+	struct replay_entry *replay_array;
+
+	/* Pull compressed replay data into memory (overcommit by 0x1000 bytes
+	 * in case we do something horrible to memory). */
+
+	in = fopen(TEST_FILE, "rb");
+	if (in == NULL)
+		exit(-1);
+	fseek(in, 0, SEEK_END);
+	int replay_size = ftell(in);
+	fseek(in, COMPRESSED_DATA_OFFSET, SEEK_SET);
+	printf("[*] Replay data starts at offset 0x%x in GCI\n",
+			COMPRESSED_DATA_OFFSET);
+	printf("[*] Reading 0x%x bytes of replay data...\n",
+			replay_size - COMPRESSED_DATA_OFFSET);
+	gci_base = malloc(replay_size + 0x1000);
+	fread(gci_base, replay_size + 0x1000, 1, in);
+	fclose(in);
+
+
+	/* The counter of decoded bits starts in the function at 0x80596414.
+	 * Not entirely sure what the purpose of this function is [yet].  */
+
+	func_80596414(gci_base, &bit_counter);
+
+
+	/* A lot of different other things happen here (we go up in the call
+	 * stack) that may or may not be relevant. Eventually we enter the
+	 * function at 0x80596810 -- seems like it's responsible for actually
+	 * building the replay array that encodes some inputs. */
+
+	replay_array = func_80596810(gci_base, &bit_counter, &array_size);
+
+
+	/* Write the replay array to a file, then clean up and exit. */
 
 	out = fopen(OUTPUT_FILE, "wb");
-	if (fp == NULL)
+	if (out == NULL)
 		exit(-1);
-	fwrite(&replay_array, sizeof(replay_array), 1, out);
+	fwrite(replay_array, sizeof(struct replay_entry), array_size+1, out);
 	fclose(out);
+	printf("[*] Wrote 0x%x replay array entries\n", array_size+1);
 
-	free(gci_data);
-	free(total_obfuscated);
+
+	free(gci_base);
+	free(replay_array);
 }
