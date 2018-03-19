@@ -1,4 +1,5 @@
-*
-!.gitignore
-!fgx-deflate-replay.c
-!Makefile
+*.gci
+*.bin
+*.notes
+fgx-checksum
+fgx-deflate-replay
