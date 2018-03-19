@@ -252,7 +252,14 @@ struct replay_entry *func_80596810(unsigned char *gci_data,
 }
 
 
-int main() {
+int main(int argc, char* argv[]) {
+	if (argc < 3) {
+		printf("usage: fgx-deflate-replay <input replay GCI> <output file>\n");
+		printf("  Given some FZGX replay file, decompress the contents and\n");
+		printf("  write the raw, in-memory replay array to some file.\n");
+		return -1; 
+	}
+
 	FILE *out, *in;
 	int pos;
 
@@ -264,7 +271,7 @@ int main() {
 	/* Pull compressed replay data into memory (overcommit by 0x1000 bytes
 	 * in case we do something horrible to memory). */
 
-	in = fopen(TEST_FILE, "rb");
+	in = fopen(argv[1], "rb");
 	if (in == NULL)
 		exit(-1);
 	fseek(in, 0, SEEK_END);
@@ -295,7 +302,7 @@ int main() {
 
 	/* Write the replay array to a file, then clean up and exit. */
 
-	out = fopen(OUTPUT_FILE, "wb");
+	out = fopen(argv[2], "wb");
 	if (out == NULL)
 		exit(-1);
 	fwrite(replay_array, sizeof(struct replay_entry), array_size+1, out);

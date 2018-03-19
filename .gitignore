@@ -1,5 +1,4 @@
 *
 !.gitignore
-!fgx_deobfus_test.c
+!fgx-deflate-replay.c
 !Makefile
-!test_00.bin

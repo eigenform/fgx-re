@@ -1,4 +1,4 @@
 all:
-	gcc -g fgx_deobfus_test.c -o fgx_deobfus_test
+	gcc -g fgx-deflate-replay.c -o fgx-deflate-replay
 clean:
-	rm -v fgx_deobfus_test
+	rm -v fgx-deflate-replay
