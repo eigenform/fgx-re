@@ -118,4 +118,8 @@ if raw['ft'] == ft.replay:
     test._decompress_array()
 
     # Write output as a hexdump
+    #log("Header section:")
     #hexdump.hexdump(test.output)
+
+    log("Replay array")
+    hexdump.hexdump(test.replay_array)

@@ -2,17 +2,54 @@
 
 class decompressor(object):
     """
-    This object has to keep track of three things:
-        * The number of bits (?) we've decoded
-        * The input data buffer (a bytearray)
-        * The output data buffer (a bytearray)
+    This object has to keep track of four things:
+
+        * The total number of bits (?) we've decoded from the GCI
+        * The input data buffer (compressed data from the GCI itself)
+
+        * All output data (all 32 bits from all results) for reference.
+          Note that this bytearray only accurately represents the order in
+          which we decompressed bytes, and does not represent the way that
+          decompressed bytes are organized in-memory
+
+        * The replay array - where each entry looks like this in-memory:
+
+                struct replay_entry {
+                    uint8_t mask;
+                    int8_t steer_x;
+                    int8_t steer_y;
+                    int8_t strafe;
+                    uint8_t accel;
+                    uint8_t brake;
+                    uint8_t frames;
+                };
+
+          Note that the layout of data in the replay array is independent of
+          the order in which bytes are decoded. The actual order for decoding
+          an entry should look like this:
+
+                    mask =      self._decompress(8)
+                    strafe =    self._decompress(8)
+                    accel =     self._decompress(7)
+                    brake =     self._decompress(7)
+                    frames =    self._decompress(8)
+                    steer_x =   self._decompress(8)
+                    steer_y =   self._decompress(8)
     """
+
     def __init__(self, compressed_data ):
+
+        # A bytearray with the compressed data from the GCI
         self.input = compressed_data
+        # A bytearray of 32-bit numbers (one for each call to `_decompress()`)
         self.output = bytearray()
+        # The decompressed replay array structure
+        self.replay_array = bytearray()
+        self.replay_entries = 0
+        # The total number of iterations we've taken in `_decompress()`
         self.total_iter = 0
 
-    def _decompress(self, count):
+    def _decompress(self, count, signed=False):
         result = 0
         num_iter = count
         if count < 1: return None
@@ -27,17 +64,22 @@ class decompressor(object):
             count = count - 1
             self.total_iter += 1
 
-        # In one sense, we want 32-bit output because the compression
-        # function operates on a whole 32-bit register.
-        self.output += result.to_bytes(4, byteorder='big')
-        #
+        # In one sense, we want to keep the 32-bit output around because
+        # the compression function operates on a whole 32-bit register
+        # (so at least if we're going to define a format for storing the
+        # raw data *outside of the game* we might as well keep all the
+        # bits around until we understand the functions accepting input).
+
+        self.output += result.to_bytes(4, byteorder='big', signed=signed)
+
         # But in another sense, the actual bits of the result used by other
         # functions seems to vary; the high-level decompression functions
         # usually mask away bits before writing them somewhere in memory
         # during decompression.
+        #
         #self.output += result.to_bytes(((result.bit_length() + 7) // 8), byteorder='big')
 
-        print("iter={:08X}: {:08X}".format(self.total_iter, result))
+        #print("iter={:08X}: {:08X}".format(self.total_iter, result))
         #return result.to_bytes(4,byteorder='big')
         return result
 
@@ -133,6 +175,21 @@ class decompressor(object):
             r20_loop1 += 1
 
         array_entries = self._decompress(14)
+        self.replay_entries = array_entries
 
-        # Loop for the array is actually here:
-        # ...
+        for idx in range(array_entries + 1):
+            mask =      self._decompress(8)
+            strafe =    self._decompress(8)
+            accel =     self._decompress(7)
+            brake =     self._decompress(7)
+            frames =    self._decompress(8)
+            steer_x =   self._decompress(8)
+            steer_y =   self._decompress(8)
+
+            self.replay_array += mask.to_bytes(1, byteorder='big')
+            self.replay_array += steer_x.to_bytes(1, byteorder='big')
+            self.replay_array += steer_y.to_bytes(1, byteorder='big')
+            self.replay_array += strafe.to_bytes(1, byteorder='big')
+            self.replay_array += accel.to_bytes(1, byteorder='big')
+            self.replay_array += brake.to_bytes(1, byteorder='big')
+            self.replay_array += frames.to_bytes(1, byteorder='big')
