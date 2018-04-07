@@ -3,3 +3,4 @@
 *.notes
 fgx-checksum
 fgx-deflate-replay
+__pycache__

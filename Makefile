@@ -1,5 +1,5 @@
 all:
-	gcc src/fgx-deflate-replay.c -o fgx-deflate-replay
+	gcc src/fgx-decompress-replay.c src/fgx_compression.c -o fgx-decompress-replay
 	gcc src/fgx-checksum.c -o fgx-checksum
 clean:
-	rm -v fgx-deflate-replay fgx-checksum
+	rm -v fgx-decompress-replay fgx-checksum
