@@ -38,7 +38,8 @@ class decompressor(object):
         #self.output += result.to_bytes(((result.bit_length() + 7) // 8), byteorder='big')
 
         print("iter={:08X}: {:08X}".format(self.total_iter, result))
-        return result.to_bytes(4,byteorder='big')
+        #return result.to_bytes(4,byteorder='big')
+        return result
 
     def _decompress_header(self):
         """
@@ -55,24 +56,24 @@ class decompressor(object):
         self._decompress(6)
         self._decompress(32)
         self._decompress(32)
-        r31_loop1 = int.from_bytes(self._decompress(5), byteorder='big')
+        r31_loop1 = self._decompress(5)
         self._decompress(3)
         self._decompress(2)
         self._decompress(1)
         self._decompress(7)
 
         while (r24_loop1 < r31_loop1):
-            r28_unk0 = int.from_bytes(self._decompress(1), byteorder='big')
-            r28_unk0 = int.from_bytes(self._decompress(6), byteorder='big')
+            r28_unk0 = self._decompress(1)
+            r28_unk0 = self._decompress(6)
             if (r20_unk1 > 3):
-                r28_unk4 = int.from_bytes(self._decompress(5), byteorder='big')
+                r28_unk4 = self._decompress(5)
             if (r20_unk1 > 2):
-                r28_unk3 = int.from_bytes(self._decompress(7), byteorder='big')
+                r28_unk3 = self._decompress(7)
             if (r28_unk0 != 0):
-                r28_unk2 = int.from_bytes(self._decompress(2), byteorder='big')
+                r28_unk2 = self._decompress(2)
                 if (r20_unk1 < 2):
-                    r28_unk3 = int.from_bytes(self._decompress(7), byteorder='big')
-                if ((int.from_bytes(self._decompress(1), byteorder='big') & 0x000000FF) != 0):
+                    r28_unk3 = self._decompress(7)
+                if ((self._decompress(1) & 0x000000FF) != 0):
                     r18_loop2 = 0
                     while (r18_loop2 < 33216):
                         self._decompress(8)
@@ -100,7 +101,7 @@ class decompressor(object):
 
     def _decompress_array(self):
         r20_loop1, r21_loop2, r19_loop3 = (0,)*3
-        r4_unk1 = int.from_bytes(self._decompress(8), byteorder='big')
+        r4_unk1 = self._decompress(8)
 
         while (r20_loop1 < r4_unk1):
             self._decompress(14)
@@ -131,7 +132,7 @@ class decompressor(object):
             self._decompress(32)
             r20_loop1 += 1
 
-        array_entries = int.from_bytes(self._decompress(14), byteorder='big')
+        array_entries = self._decompress(14)
 
         # Loop for the array is actually here:
         # ...
