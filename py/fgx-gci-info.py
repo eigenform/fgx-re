@@ -2,53 +2,13 @@
 
 import os, sys
 import hexdump
+import struct
+
+from fgx_format import *
 from fgx_compression import *
 
 def log(msg): print("[*] {}".format(msg))
 def err(msg): print("[!] {}".format(msg))
-
-# -----------------------------------------------------------------------------
-# Define some known values for known fields in the GCI
-
-class region:
-    """ Game ID bytes, corresponds to game region.
-        (4 bytes @ offset 0x00)
-    """
-    pal =   b'GFZP'
-    jp =    b'GFZJ'
-    ntsc =  b'GFZE'
-    string = {  pal: "PAL", jp: "JP", ntsc: "NTSC", }
-
-    def get_region(x):
-        """ Given some raw game ID bytes, return the corresponding string """
-        if x in region.string:
-            return "{} ({})".format(region.string.get(x), x.hex())
-        else:
-            return "Unknown ({})".format(x)
-
-class ft:
-    """ Known filetype bytes.
-        (2 bytes @ offset 0x42)
-    """
-    replay =    b'\x05\x04'
-    game =      b'\x01\x0b'
-    ghost =     b'\x02\x01'
-    garage =    b'\x03\x01'
-    emblem =    b'\x04\x01'
-
-    string = {  replay: "Replay file",
-                game: "Gamedata file",
-                garage: "Garage file",
-                ghost: "Ghost file",
-                emblem: "Emblem file", }
-
-    def get_filetype(x):
-        """ Given some raw filetype bytes, return the corresponding string """
-        if x in ft.string:
-            return "{} ({})".format(ft.string.get(x), x.hex())
-        else:
-            return "Unknown ({})".format(x.hex())
-
 
 
 
@@ -80,6 +40,8 @@ try:
 except FileNotFoundError as e:
     err(e)
     exit(-1)
+
+outfile_base = os.path.basename(filename).split(".")[0]
 
 # -----------------------------------------------------------------------------
 # Read some relevant fields from the GCI
@@ -118,8 +80,20 @@ if raw['ft'] == ft.replay:
     test._decompress_array()
 
     # Write output as a hexdump
-    #log("Header section:")
-    #hexdump.hexdump(test.output)
+    log("Header section (each entry is 32 bits):")
+    hexdump.hexdump(test.header)
+    headerfile = open(outfile_base + ".header.bin", "wb")
+    headerfile.write(test.header)
+    headerfile.close()
 
-    log("Replay array")
-    hexdump.hexdump(test.replay_array)
+
+    #log("Replay array")
+    #hexdump.hexdump(test.replay_array)
+    #arrayfile = open(outfile_base + ".array.bin", "wb")
+    #arrayfile.write(test.replay_array)
+    #arrayfile.close()
+
+    #comp = compressor(test.header)
+
+    #for i in comp.header:
+        #print(hex(i))
