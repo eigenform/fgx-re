@@ -38,8 +38,8 @@ uint32_t decompress(void *compressed_base, uint32_t *total_iterations,
 		num_iterations--;
 		*total_iterations = *total_iterations + 1;
 		ctr--;
-		printf("base_off=0x%08x, mask=0x%08x, input_val=0x%02x, total_iter=0x%08x\n",
-			base_offset, mask, input_val, *total_iterations);
+		printf("base_off=0x%08x, mask=0x%08x, input_val=0x%02x, total_iter=0x%08x, res=0x%08x\n",
+			base_offset, mask, input_val, *total_iterations, result);
 	}
 
 	printf("0x%08x\n", result);

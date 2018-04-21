@@ -5,7 +5,7 @@ import hexdump
 import struct
 
 from fgx_format import *
-from fgx_compression import *
+from fgx_encode import *
 
 def log(msg): print("[*] {}".format(msg))
 def err(msg): print("[!] {}".format(msg))
@@ -75,25 +75,52 @@ info['region'] = region.get_region(raw['game_id'])
 if raw['ft'] == ft.replay:
     f.seek(0x20a0)
     replay_data = bytearray(f.read())
-    test = decompressor(replay_data)
-    test._decompress_header()
-    test._decompress_array()
+    test = decoder(replay_data)
+    test._decode_header()
+    test._decode_array()
 
-    # Write output as a hexdump
-    log("Header section (each entry is 32 bits):")
-    hexdump.hexdump(test.header)
     headerfile = open(outfile_base + ".header.bin", "wb")
     headerfile.write(test.header)
     headerfile.close()
+    arrayfile = open(outfile_base + ".array.bin", "wb")
+    arrayfile.write(test.replay_array)
+    arrayfile.close()
+
+    
+
+    #co = encoder(test.header)
+
+    #r28_unk0, r28_unk1, r28_unk2, r28_unk3, r28_unk4, r24_loop1, = (0,)*6
+    #unk_entries, r18_loop2, r25_loop3, r23_unk1 = (0,)*4
+    #r20_unk1 = 5
+
+    #co._encode(8, co.header[co.offset], header=True)
+    #co._encode(7, co.header[co.offset], header=True)
+    #co._encode(6, co.header[co.offset], header=True)
+    #co._encode(32, co.header[co.offset], header=True)
+    #co._encode(32, co.header[co.offset], header=True)
+
+    #unk_entries = co.header[co.offset]
+    #co._encode(5, co.header[co.offset], header=True)
+
+    #co._encode(3, co.header[co.offset], header=True)
+    #co._encode(2, co.header[co.offset], header=True)
+    #co._encode(1, co.header[co.offset], header=True)
+    #co._encode(7, co.header[co.offset], header=True)
 
 
-    #log("Replay array")
-    #hexdump.hexdump(test.replay_array)
-    #arrayfile = open(outfile_base + ".array.bin", "wb")
-    #arrayfile.write(test.replay_array)
-    #arrayfile.close()
 
-    #comp = compressor(test.header)
 
-    #for i in comp.header:
-        #print(hex(i))
+
+
+
+
+
+
+
+
+
+
+
+
+    #hexdump.hexdump(co.output)
