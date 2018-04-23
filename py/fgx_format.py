@@ -1,51 +1,112 @@
-
+import os
+import struct
 
 class region:
     """
     Game ID bytes, corresponds to game region (4 bytes @ offset 0x00).
     """
-
     pal =   b'GFZP'
     jp =    b'GFZJ'
     ntsc =  b'GFZE'
-
     string = {  pal: "PAL",
                 jp: "JP",
                 ntsc: "NTSC", }
-
-    def get_region(x):
-        """
-        Given some raw game ID bytes, return the corresponding string
-        """
-
-        if x in region.string:
-            return "{} ({})".format(region.string.get(x), x.hex())
-        else:
-            return "Unknown ({})".format(x)
 
 class ft:
     """
     Known filetype bytes (2 bytes @ offset 0x42).
     """
-
     replay =    b'\x05\x04'
     game =      b'\x01\x0b'
     ghost =     b'\x02\x01'
     garage =    b'\x03\x01'
     emblem =    b'\x04\x01'
-
     string = {  replay: "Replay file",
                 game: "Gamedata file",
                 garage: "Garage file",
                 ghost: "Ghost file",
                 emblem: "Emblem file", }
 
-    def get_filetype(x):
-        """
-        Given some raw filetype bytes, return the corresponding string
-        """
+class machine():
+    """
+    Machine IDs
+    """
+    blue_falcon     =  6
+    deep_claw       =  7
 
-        if x in ft.string:
-            return "{} ({})".format(ft.string.get(x), x.hex())
+
+class gci(object):
+    def __init__(self, filename):
+        self._filename = os.path.basename(filename).split(".")[0]
+        self.raw_bytes = bytearray()
+        try:
+            self.fd = open(filename, "rb")
+            self.filesize = os.stat(filename).st_size
+            self.raw_bytes = bytearray(self.fd.read(self.filesize))
+            self.fd.seek(0x0)
+            print("[*] Read {} bytes from {}".format(hex(self.filesize), filename))
+        except FileNotFoundError as e:
+            err(e)
+            self.fd = None
+            self.raw_bytes = None
+            self.filesize = None
+            return None
+
+    ''' These functions return other types '''
+    def get_blocksize(self):
+        return struct.unpack(">h", self.raw_bytes[0x38:0x3a])[0]
+    def get_region(self):
+        return region.strings[self.get_game_id()]
+    def get_filetype(self):
+        return ft.strings[self.get_filetype_bytes()]
+
+    ''' These functions return raw bytes '''
+    def get_game_id(self):
+        return self.raw_bytes[0x00:0x04]
+    def get_filetype_bytes(self):
+        return self.raw_bytes[0x42:0x44]
+    def get_checksum(self):
+        return self.raw_bytes[0x40:0x42]
+    def get_dentry(self):
+        return self.raw_bytes[0:0x40]
+    def get_replay_data(self):
+        return self.raw_bytes[0x20a0:]
+    def get_replay_data_len(self):
+        return len(self.raw_bytes[0x20a0:])
+    def dump(self):
+        return self.raw_bytes
+
+    def set_checksum(self, new_checksum):
+        """ Expects some packed bytes (>H) """
+        self.raw_bytes[0x40:0x42] = new_checksum
+
+    def set_replay_data(self, new_replay_data):
+        """
+        Replace the current replay data with some new replay data.
+        new_replay_data should be a bytearray().
+        """
+        original_replay_data_len = self.get_replay_data_len()
+        self.raw_bytes[0x20a0:] = new_replay_data[:original_replay_data_len]
+
+    def recompute_checksum(self):
+        """
+        Recompute the checksum over the GCI, writing in the new checksum
+        if the value has changed at all
+        """
+        current_checksum = struct.unpack(">H", self.get_checksum())[0]
+        new_checksum = 0xFFFF
+        data = self.raw_bytes[0x42:]
+        for byte in data:
+            new_checksum = new_checksum ^ byte
+            for j in range(8):
+                if ((new_checksum & 1) == 1):
+                    new_checksum = (new_checksum >> 1) ^ 0x8408
+                else:
+                    new_checksum = new_checksum >> 1
+        new_checksum = new_checksum ^ 0xFFFF
+        if (current_checksum == new_checksum):
+            print("Checksum values are the same! [{}]".format(hex(new_checksum)))
         else:
-            return "Unknown ({})".format(x.hex())
+            print("Recomputed checksum [{}] -> [{}]".format(hex(current_checksum),
+                                                            hex(new_checksum)))
+            self.set_checksum(struct.pack(">H", new_checksum))
