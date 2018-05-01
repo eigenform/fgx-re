@@ -1,4 +1,5 @@
 import struct
+import hexdump
 
 class replay(object):
     """
@@ -53,6 +54,9 @@ class replay(object):
         # An array of size 'player_array_entries'.
         self.player_array_dict = []
 
+        # An array of garage-data entries where each entry corresponds to a play_array entry
+        self.garage_data = []
+
         # Unknown array of one-bit decodings (one per player_entry)
         self.unk_one_bit_array = []
 
@@ -98,6 +102,7 @@ class decoder(object):
         return self.replay
 
     def _decode(self, count, signed=False):
+        #print("count={} offset=0x{:08X}, input=0x{:08X}, total_iter=0x{:08X}".format(count, (self.total_iter >> 3)&0x1fffffff, self.input[(self.total_iter >> 3)&0x1fffffff], self.total_iter))
         result = 0
         num_iter = count
         if count < 1: return None
@@ -113,6 +118,8 @@ class decoder(object):
             self.total_iter += 1
 
         # Save full 32-bit output from all calls to decode (for debugging)
+        #print(hex(result))
+        #print("output: {:08X}".format(result))
         self.raw_output += result.to_bytes(4, byteorder='big', signed=signed)
 
         return result
@@ -156,10 +163,13 @@ class decoder(object):
                 # Don't know if this is for garage ships or not yet
                 is_custom_ship = self._decode(1)
                 if ((is_custom_ship & 0x000000FF) != 0):
-                    entry_ba['custom_ship_data'] = bytearray()
+                    custom_ship_data = bytearray()
+                    print("garage data decode")
                     for i in range(0, 33216):
                         word = self._decode(8)
-                        entry_ba['custom_ship_data'] += word.to_bytes(4, byteorder='big')
+                        custom_ship_data += word.to_bytes(1, byteorder='big')
+                else:
+                    custom_ship_data = None
                 unk_entry_idx += 1
 
             elif (is_human == 0):
@@ -173,6 +183,7 @@ class decoder(object):
             entry['accel_speed_slider'] = accel_speed_slider
             entry['member_0x4'] = member_0x4
             entry['is_custom_ship'] = is_custom_ship
+            entry['custom_ship_data'] = custom_ship_data
             self.replay.player_array_dict.append(entry)
 
         # Two arrays here, one entry for each player_array entry
@@ -286,6 +297,10 @@ class encoder(object):
         (or imported from a file, maybe sometime down the road)
         """
         self._encode(8, data.tick)
+
+        # Note that the following loops do not conditionally encode bits 
+        # based on the value of player_entry_size.
+
         self._encode(7, data.player_entry_size)
         self._encode(6, data.course_id)
         self._encode(32, data.unk_1)
@@ -296,6 +311,7 @@ class encoder(object):
         self._encode(1, data.unk_5)
         self._encode(7, data.unk_6)
 
+        # Note that the array size is decoupled from player_array_size here
         for entry in data.player_array_dict:
             self._encode(1, entry['is_human'])
             self._encode(6, entry['char_id'])
@@ -303,6 +319,9 @@ class encoder(object):
             self._encode(7, entry['accel_speed_slider'])
             self._encode(2, entry['member_0x2'])
             self._encode(1, entry['is_custom_ship'])
+            if (entry['is_custom_ship'] == 1):
+                for i in range(0, 33216):
+                    self._encode(8, entry['custom_ship_data'][i])
 
         for entry in data.unk_one_bit_array:
             self._encode(1, entry)
@@ -312,6 +331,7 @@ class encoder(object):
         self._encode(20, data.total_frames)
 
         self._encode(8, data.unk_array_entries)
+        # Note that the array size is decoupled from unk_array_entries here
         for entry in data.unk_array:
             self._encode(14, entry['part_one'][0])
             self._encode(14, entry['part_one'][1])
@@ -327,6 +347,7 @@ class encoder(object):
                 self._encode(32, word)
 
         self._encode(14, data.replay_array_entries)
+        # Note that the array size is decoupled from replay_array_entries here
         for entry in data.replay_array_dict:
             self._encode(8, entry['mask'])
             self._encode(8, entry['strafe'])

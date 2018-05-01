@@ -21,6 +21,7 @@ class ft:
     ghost =     b'\x02\x01'
     garage =    b'\x03\x01'
     emblem =    b'\x04\x01'
+    debug =     b'\x00\x01' # takes sys_e.bin like a save file???
     string = {  replay: "Replay file",
                 game: "Gamedata file",
                 garage: "Garage file",
@@ -59,10 +60,27 @@ class gci(object):
         return region.strings[self.get_game_id()]
     def get_filetype(self):
         return ft.strings[self.get_filetype_bytes()]
-
     ''' These functions return raw bytes '''
     def get_game_id(self):
         return self.raw_bytes[0x00:0x04]
+    def get_filename(self):
+        return self.raw_bytes[0x08:0x28]
+
+    # modtime 0x28:0x2c
+    # image off 0x2c:0x30
+    # icon_fmt 0x30:0x32
+    # anim speed 0x32:0x34
+    # permissions 0x34:0x35
+    # copy_ctr 0x35:0x36
+    # first_block 0x36:0x38
+    # block_count 0x38:0x3a
+    # unused 0x3a:0x3c
+
+    def get_block_count(self):
+        return self.raw_bytes[0x38:0x3a]
+    def get_comment_addr(self):
+        return self.raw_bytes[0x3c:0x40]
+
     def get_filetype_bytes(self):
         return self.raw_bytes[0x42:0x44]
     def get_checksum(self):
@@ -75,6 +93,19 @@ class gci(object):
         return len(self.raw_bytes[0x20a0:])
     def dump(self):
         return self.raw_bytes
+
+    def set_filename(self, new_filename):
+        self.raw_bytes[0x08:0x28] = new_filename
+    def set_filetype(self, new_filetype):
+        self.raw_bytes[0x42:0x44] = bytearray(new_filetype)
+
+    def set_block_count(self, new_bc):
+        self.raw_bytes[0x38:0x3a] = new_bc
+    def set_comment_addr(self, new_addr):
+        self.raw_bytes[0x3c:0x40] = new_addr
+
+    def set_region(self, new_gameid):
+        self.raw_bytes[0x00:0x04] = bytearray(new_gameid)
 
     def set_checksum(self, new_checksum):
         """ Expects some packed bytes (>H) """
