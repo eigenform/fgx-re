@@ -85,7 +85,7 @@ class replay(object):
 
 class decoder(object):
     def __init__(self, input_data):
-
+        print("Started decoding a replay file")
         # Internal state
         self.raw_output = bytearray()
         self.input = input_data
@@ -97,6 +97,7 @@ class decoder(object):
         self.replay = replay()
         self._decode_header()
         self._decode_array()
+        print("Successfully decoded replay data")
 
     def dump(self):
         return self.replay
@@ -298,7 +299,7 @@ class encoder(object):
         """
         self._encode(8, data.tick)
 
-        # Note that the following loops do not conditionally encode bits 
+        # Note that the following loops do not conditionally encode bits
         # based on the value of player_entry_size.
 
         self._encode(7, data.player_entry_size)

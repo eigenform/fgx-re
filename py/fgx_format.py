@@ -11,17 +11,19 @@ class region:
     string = {  pal: "PAL",
                 jp: "JP",
                 ntsc: "NTSC", }
-
 class ft:
     """
-    Known filetype bytes (2 bytes @ offset 0x42).
+    Known filetype bytes (2 bytes @ offset 0x42)
+    During runtime the game actually loads some data for parsing these which
+    includes an "f_zero_debug" file with type b'\x00'. Not clear where this
+    is actually accepted - might be vestigial or region-dependent?
     """
     replay =    b'\x05\x04'
     game =      b'\x01\x0b'
     ghost =     b'\x02\x01'
     garage =    b'\x03\x01'
     emblem =    b'\x04\x01'
-    debug =     b'\x00\x01' # takes sys_e.bin like a save file???
+    #debug =     b'\x00\x01'
     string = {  replay: "Replay file",
                 game: "Gamedata file",
                 garage: "Garage file",
@@ -30,11 +32,11 @@ class ft:
 
 class machine():
     """
-    Machine IDs
+    Internal Machine IDs
     """
     blue_falcon     =  6
     deep_claw       =  7
-
+    # ...
 
 class gci(object):
     def __init__(self, filename):
@@ -54,75 +56,87 @@ class gci(object):
             return None
 
     ''' These functions return other types '''
+
     def get_blocksize(self):
         return struct.unpack(">h", self.raw_bytes[0x38:0x3a])[0]
     def get_region(self):
         return region.strings[self.get_game_id()]
     def get_filetype(self):
         return ft.strings[self.get_filetype_bytes()]
+
     ''' These functions return raw bytes '''
+
+    def dump(self):
+        return self.raw_bytes
+    def get_dentry(self):
+        return self.raw_bytes[0:0x40]
+
     def get_game_id(self):
         return self.raw_bytes[0x00:0x04]
     def get_filename(self):
         return self.raw_bytes[0x08:0x28]
-
-    # modtime 0x28:0x2c
-    # image off 0x2c:0x30
-    # icon_fmt 0x30:0x32
-    # anim speed 0x32:0x34
-    # permissions 0x34:0x35
-    # copy_ctr 0x35:0x36
-    # first_block 0x36:0x38
-    # block_count 0x38:0x3a
-    # unused 0x3a:0x3c
-
+    def get_modtime(self):
+        return self.raw_bytes[0x28:0x2c]
+    def get_image_off(self):
+        return self.raw_bytes[0x2c:0x30]
+    def get_icon_fmt(self):
+        return self.raw_bytes[0x30:0x32]
+    def get_anim_speed(self):
+        return self.raw_bytes[0x32:0x34]
+    def get_permissions(self):
+        return self.raw_bytes[0x34:0x35]
+    def get_copy_ctr(self):
+        return self.raw_bytes[0x35:0x36]
+    def get_first_block(self):
+        return self.raw_bytes[0x36:0x38]
+    def get_block_count(self):
+        return self.raw_bytes[0x38:0x3a]
+    #def get_unused_word(self):
+    #   return self.raw_bytes[0x3a:0x3c]
     def get_block_count(self):
         return self.raw_bytes[0x38:0x3a]
     def get_comment_addr(self):
         return self.raw_bytes[0x3c:0x40]
 
-    def get_filetype_bytes(self):
-        return self.raw_bytes[0x42:0x44]
     def get_checksum(self):
         return self.raw_bytes[0x40:0x42]
-    def get_dentry(self):
-        return self.raw_bytes[0:0x40]
-    def get_replay_data(self):
-        return self.raw_bytes[0x20a0:]
+    def get_filetype_bytes(self):
+        return self.raw_bytes[0x42:0x44]
+
+    # Banner/icon data lives from 0x42 to 0x20a0.
+
     def get_replay_data_len(self):
         return len(self.raw_bytes[0x20a0:])
-    def dump(self):
-        return self.raw_bytes
+    def get_replay_data(self):
+        return self.raw_bytes[0x20a0:]
+
+    ''' These functions take a `bytearray()` and replace some field '''
 
     def set_filename(self, new_filename):
         self.raw_bytes[0x08:0x28] = new_filename
     def set_filetype(self, new_filetype):
         self.raw_bytes[0x42:0x44] = bytearray(new_filetype)
-
     def set_block_count(self, new_bc):
         self.raw_bytes[0x38:0x3a] = new_bc
     def set_comment_addr(self, new_addr):
         self.raw_bytes[0x3c:0x40] = new_addr
-
     def set_region(self, new_gameid):
         self.raw_bytes[0x00:0x04] = bytearray(new_gameid)
-
     def set_checksum(self, new_checksum):
         """ Expects some packed bytes (>H) """
         self.raw_bytes[0x40:0x42] = new_checksum
-
     def set_replay_data(self, new_replay_data):
         """
         Replace the current replay data with some new replay data.
-        new_replay_data should be a bytearray().
+        new_replay_data should be a bytearray() of the appropriate size.
         """
         original_replay_data_len = self.get_replay_data_len()
         self.raw_bytes[0x20a0:] = new_replay_data[:original_replay_data_len]
 
     def recompute_checksum(self):
         """
-        Recompute the checksum over the GCI, writing in the new checksum
-        if the value has changed at all
+        Recompute the checksum over the GCI, writing in the new checksum if
+        the value has changed at all
         """
         current_checksum = struct.unpack(">H", self.get_checksum())[0]
         new_checksum = 0xFFFF
