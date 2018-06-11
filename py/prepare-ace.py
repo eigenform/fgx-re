@@ -152,6 +152,15 @@ input_gci.set_replay_data(new_replay_data)
 input_gci.recompute_checksum()
 input_gci.set_region(region.ntsc)
 
+# Some aspect of clean return (or of triggering the vulnerable code path in a
+# way that's consistent with some of the assumptions we're making about the
+# placement of certain things in memory during runtime) seems to depend on our
+# cursor hovering over the entry for our crafted GCI in the replay menu. As of
+# right now, it seems like some things depend on the entry being first in the
+# list of replays. Setting the modtime to zero seconds should be sufficient
+# for now, assuming that there aren't any other files where modtime is 0.
+input_gci.set_modtime(0)
+
 # Write the new GCI to a file
 print("Writing to {}".format(output_fn))
 ofd = open(output_fn, "wb")

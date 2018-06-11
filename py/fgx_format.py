@@ -114,6 +114,8 @@ class gci(object):
 
     def set_filename(self, new_filename):
         self.raw_bytes[0x08:0x28] = new_filename
+    def set_modtime(self, new_modtime):
+        self.raw_bytes[0x28:0x2c] = struct.pack(">L", new_modtime)
     def set_filetype(self, new_filetype):
         self.raw_bytes[0x42:0x44] = bytearray(new_filetype)
     def set_block_count(self, new_bc):
