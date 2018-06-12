@@ -61,7 +61,7 @@ output_fn       = sys.argv[3]
 
 # -----------------------------------------------------------------------------
 # Import a GCI
-input_gci = gci(input_fn)
+input_gci = gci(filename=input_fn)
 print(input_gci.get_filename())
 if input_gci.get_blocksize() < 8:
     print("This isn't an 8-block replay GCI, or your dentry is corrupted.")

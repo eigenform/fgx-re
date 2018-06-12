@@ -39,21 +39,46 @@ class machine():
     # ...
 
 class gci(object):
-    def __init__(self, filename):
-        self._filename = os.path.basename(filename).split(".")[0]
-        self.raw_bytes = bytearray()
-        try:
-            self.fd = open(filename, "rb")
-            self.filesize = os.stat(filename).st_size
-            self.raw_bytes = bytearray(self.fd.read(self.filesize))
-            self.fd.seek(0x0)
-            print("[*] Read {} bytes from {}".format(hex(self.filesize), filename))
-        except FileNotFoundError as e:
-            err(e)
-            self.fd = None
-            self.raw_bytes = None
-            self.filesize = None
-            return None
+    def __init__(self, filename=None, blocksize=None, gci_filename=None):
+        """ Going to make this less confusing in the future, but: 'filename'
+            is an existing GCI file that you want to read() into this object.
+            Otherwise, pass 'gci_filename' and 'blocksize' to synthesize a new
+            GCI (for F-Zero GX) with the given size/name. """
+
+        if (filename is not None):
+            self._filename = os.path.basename(filename).split(".")[0]
+            self.raw_bytes = bytearray()
+            try:
+                self.fd = open(filename, "rb")
+                self.filesize = os.stat(filename).st_size
+                self.raw_bytes = bytearray(self.fd.read(self.filesize))
+                self.fd.seek(0x0)
+                print("[*] Read {} bytes from {}".format(hex(self.filesize), filename))
+            except FileNotFoundError as e:
+                err(e)
+                self.fd = None
+                self.raw_bytes = None
+                self.filesize = None
+                return None
+        else:
+            if (blocksize < 0) or (blocksize is None):
+                print("Need to specify blocksize when you aren't reading a GCI")
+                return None
+            if (gci_filename is None):
+                print("Need to specify a GCI filename when you aren't reading a GCI")
+                return None
+            self.raw_bytes = bytearray(b'\x00'* ((blocksize * 0x2000) + 0x40))
+            self.set_region(region.ntsc)
+            self.set_maker_code()
+            self.set_block_count(struct.pack(">H", blocksize))
+            self.set_permissions(4)
+            if (len(gci_filename) > 0x20):
+                print("GCI filename must be <0x20 bytes long")
+                return None
+            if (len(gci_filename) < 0x20):
+                fn_pad = gci_filename + ('\x00'*(0x20 - len(gci_filename)))
+                self.set_filename(bytearray(fn_pad, 'ascii'))
+
 
     ''' These functions return other types '''
 
@@ -73,6 +98,8 @@ class gci(object):
 
     def get_game_id(self):
         return self.raw_bytes[0x00:0x04]
+    def get_maker_code(self):
+        return self.raw_bytes[0x04:0x06]
     def get_filename(self):
         return self.raw_bytes[0x08:0x28]
     def get_modtime(self):
@@ -124,6 +151,10 @@ class gci(object):
         self.raw_bytes[0x3c:0x40] = new_addr
     def set_region(self, new_gameid):
         self.raw_bytes[0x00:0x04] = bytearray(new_gameid)
+    def set_maker_code(self):
+        self.raw_bytes[0x04:0x06] = bytearray(b'8P') # ?
+    def set_permissions(self, new_perm):
+        self.raw_bytes[0x34:0x35] = struct.pack(">B", new_perm)
     def set_checksum(self, new_checksum):
         """ Expects some packed bytes (>H) """
         self.raw_bytes[0x40:0x42] = new_checksum
