@@ -67,7 +67,9 @@ class gci(object):
             if (gci_filename is None):
                 print("Need to specify a GCI filename when you aren't reading a GCI")
                 return None
-            self.raw_bytes = bytearray(b'\x00'* ((blocksize * 0x2000) + 0x40))
+            # Make a dentry
+            self.raw_bytes = bytearray()
+            self.raw_bytes += b'\x00'*0x40
             self.set_region(region.ntsc)
             self.set_maker_code()
             self.set_block_count(struct.pack(">H", blocksize))
