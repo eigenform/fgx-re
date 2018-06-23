@@ -125,7 +125,8 @@ new_garage_data[0x7f40:0x7f44] = pack(">L", STRCPY_PTR)
 new_garage_data[0x81a4:0x81a5] = b'\x84'
 new_garage_data[0x81b4:0x81b5] = b'\x84'
 
-hexdump.hexdump(new_garage_data)
+# Output garage data in hex
+#hexdump.hexdump(new_garage_data)
 
 # Write garage data back into the player_array entry
 my_replay.player_array_dict[0]['custom_ship_data'] = new_garage_data

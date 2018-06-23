@@ -26,8 +26,16 @@ print("Read GCI: {}".format(input_gci.get_filename()))
 
 # Decode the replay data
 my_decoder = decoder(input_gci.get_replay_data())
+
 # Get the decoded data
 my_replay = my_decoder.dump()
+
+print("----------------------------------------------------------------------")
+print("Number of replay array entries: {}".format(my_replay.replay_array_entries))
+for entry in my_replay.replay_array_dict:
+    print(entry)
+
+print("----------------------------------------------------------------------")
 
 print("Total frames: {}".format(hex(my_replay.total_frames)))
 print("Machine ID: {}".format(hex(my_replay.player_array_dict[0]['char_id'])))

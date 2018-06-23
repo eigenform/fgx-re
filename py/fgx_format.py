@@ -53,7 +53,7 @@ class gci(object):
                 self.filesize = os.stat(filename).st_size
                 self.raw_bytes = bytearray(self.fd.read(self.filesize))
                 self.fd.seek(0x0)
-                print("[*] Read {} bytes from {}".format(hex(self.filesize), filename))
+                print("Read {} bytes from input GCI".format(hex(self.filesize)))
             except FileNotFoundError as e:
                 err(e)
                 self.fd = None
