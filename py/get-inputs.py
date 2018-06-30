@@ -55,15 +55,17 @@ for entry in my_replay.replay_array_dict:
     output += struct.pack("@7B", mask, strafe, accel, brake, frames-1, steer_x, steer_y)
 
     # Unroll each entry
+    print("Unrolling block of {} frames:".format(frames))
     for frame in range(0,frames):
-        print("frame={:05d}: accel={:02X}, mask={:02X}, steer_x=0x{:02X}, steer_y=0x{:02X}".format(current_frame, accel,
-            mask, steer_x, steer_y))
+        print("frame={:05d}: mask={:02X} strafe={:02X} accel={:02X} brake={:02X} steer_x=0x{:02X}, steer_y=0x{:02X}".format(current_frame, mask, strafe, 
+            accel, brake,steer_x, steer_y))
         current_frame += 1
 
 print("Calculated total number of frames from entries: {}".format(num_frames))
 print("Size of binary output: {} ({})".format(hex(len(output)), len(output)))
 with open("/tmp/replay.bin", "wb") as f:
     f.write(output)
+    print("Wrote binary output to /tmp/replay.bin")
 
 
 print("----------------------------------------------------------------------")

@@ -1,6 +1,6 @@
 *.gci
 *.bin
-*.notes
+NOTES
 fgx-checksum
 fgx-decompress-replay
 __pycache__
