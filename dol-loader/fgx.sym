@@ -1,0 +1,44 @@
+_malloc = 0x8007a1c0;
+_free = 0x8007a150;
+_sprintf = 0x8008069c;
+
+save_gpr = 0x80079858;
+restore_gpr = 0x800798a4;
+SI_GetTypeAsync = 0x80012ed0;
+SI_GetType = 0x80012d0c;
+SI_Transfer = 0x80012908;
+
+OSGetTick = 0x80011424;
+
+OSEnableInterrupts = 0x8000d508;
+OSDisableInterrupts = 0x8000d4f4;
+OSDisableScheduler = 0x800102ec;
+OSStopAudioSystem = 0x8000b53c;
+GXSetDrawDone = 0x800340d4;
+
+GetTypeWrapper = 0x80013158;
+
+ICInvalidateRange = 0x8000b6e0;
+DCFlushRange = 0x8000b654;
+
+VISetNextFramebuffer = 0x8001bd84;
+VIFlush = 0x8001bc54;
+
+TRK_flush_cache = 0x8008aff0;
+
+__start = 0x80003154;
+_memcpy = 0x80003540;
+
+CARDOpen = 0x8002ebd4;
+CARDClose = 0x8002ed4c;
+CARDGetResultCode = 0x8002a958;
+CARDMountAsync = 0x8002de40;
+CARDReadAsync = 0x8002f428;
+CARDCreateAsync = 0x8002eed8;
+CARDWriteAsync = 0x8002f7d8;
+CARDUnmount = 0x8002e0c4;
+CARDInit = 0x8002a698;
+MemAlloc = 0x801bf04c;
+
+_MaybeOsLink = 0x8000e030;
+_ActuallyOsLink = 0x8000e334;
