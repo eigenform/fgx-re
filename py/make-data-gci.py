@@ -1,9 +1,9 @@
 #!/usr/bin/python
+''' make-data-gci.py
+Synthesize a GCI file with arbitrary contents.
+'''
 
 import os, sys
-import hexdump
-import struct
-import binascii
 
 from fgx_format import *
 from fgx_encode import *
@@ -19,6 +19,7 @@ else:
     dentry_filename = sys.argv[2]
     output_filename = sys.argv[3]
 
+# Read input from some file 
 with open(input_filename, "rb") as f:
     data = f.read()
     data_len = len(data)
